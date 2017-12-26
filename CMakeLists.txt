@@ -8,4 +8,6 @@ include_directories(src/headers)
 
 add_executable(server
 	src/main.cpp
+	src/EventLoop.cpp
+	src/EventSource.cpp
 	)
