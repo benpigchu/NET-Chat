@@ -1,5 +1,6 @@
 #include <vector>
 #include <string>
+#include <deque>
 #include <unordered_map>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -19,8 +20,10 @@ struct UserData{
 
 struct Session{
 	::std::string inputBuffer;
+	::std::deque<::std::string> outputBuffer;
 	int userId=0;//0=not login
 	int chattingUserId=0;//0=not chatting
+	bool writable=true;
 };
 
 void chat(){
@@ -30,7 +33,18 @@ void chat(){
 	::std::unique_ptr<TcpServer> server=::std::make_unique<TcpServer>(::std::string("0.0.0.0"),7647);
 	server->setOnConnectHandler([&socketSessions,&loop](TcpSocket* socket){
 		socketSessions[socket];
-		socket->setOnDataHandler([&socketSessions,&loop,socket](::std::string data){
+		auto sendPacket=[&socketSessions,socket](::std::string data){
+			uint16_t l=data.length();
+			uint16_t lt=htons(l);
+			::std::string packet=::std::string((char*)(&lt),2)+data;
+			::std::cerr<<(uint16_t)(packet[0])<<" "<<(uint16_t)(packet[1])<<"\n";
+			if(socketSessions[socket].writable){
+				socketSessions[socket].writable=socket->attemptWrite(packet);
+			}else{
+				socketSessions[socket].outputBuffer.push_back(packet);
+			}
+		};
+		socket->setOnDataHandler([&socketSessions,&loop,socket,&sendPacket](::std::string data){
 			socketSessions[socket].inputBuffer+=data;
 			while(socketSessions[socket].inputBuffer.length()>2){
 				uint16_t l=*(uint16_t*)(socketSessions[socket].inputBuffer.c_str());
@@ -38,14 +52,21 @@ void chat(){
 				if(socketSessions[socket].inputBuffer.length()>=2+length){
 					::std::string packet=socketSessions[socket].inputBuffer.substr(2,2+length);
 					socketSessions[socket].inputBuffer=socketSessions[socket].inputBuffer.substr(2+length);
-					::std::cerr<<packet<<"\n";
+					{
+						sendPacket(::std::string("iz"));
+					}
 				}else{
 					break;
 				}
 			}
 		});
 		socket->setOnWritableHandler([&socketSessions,socket](){
-
+			socketSessions[socket].writable=true;
+			while((!socketSessions[socket].outputBuffer.empty())&&socketSessions[socket].writable){
+				::std::string packet=socketSessions[socket].outputBuffer.front();
+				socketSessions[socket].outputBuffer.pop_front();
+				socketSessions[socket].writable=socket->attemptWrite(packet);
+			}
 		});
 		socket->setOnConnectionLostHandler([&socketSessions,&loop,socket](){
 			socketSessions.erase(socket);
