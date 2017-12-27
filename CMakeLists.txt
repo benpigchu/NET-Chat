@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.0)
 project(CG-RayTracing)
 
+set(CMAKE_CXX_STANDARD 14)
+
 include_directories(src)
 include_directories(src/headers)
 

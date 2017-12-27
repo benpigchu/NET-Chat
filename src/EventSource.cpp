@@ -3,6 +3,8 @@
 #include <errno.h>
 #include <cstddef>
 #include <unistd.h>
+#include <string.h>
+#include <errno.h>
 #include "EventSource.h"
 #include "EventLoop.h"
 
