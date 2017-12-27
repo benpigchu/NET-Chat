@@ -5,6 +5,7 @@
 #include "EventSource.h"
 #include "TcpServer.h"
 #include "TcpSocket.h"
+#include "Chat.h"
 
 void echoTest(){
 	EventLoop loop;
@@ -12,7 +13,6 @@ void echoTest(){
 	server->setOnConnectHandler([&loop](TcpSocket* socket){
 		socket->setOnDataHandler([&loop,socket](::std::string data){
 			if(data.length()==0){
-				::std::cout<<"zeroPkg...\n";
 				loop.deleteLater(socket);
 			}else{
 				socket->attemptWrite(data);
@@ -28,8 +28,10 @@ void echoTest(){
 	loop.run();
 }
 
+
+
 int main(int argc,char** argv){
 	::std::cout<<"building...\n";
-	echoTest();
+	chat();
 	return 0;
 }
