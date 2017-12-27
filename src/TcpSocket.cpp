@@ -57,7 +57,7 @@ void TcpSocket::lostConnection(){
 }
 
 void TcpSocket::handleEvent(uint32_t eventType){
-	if(eventType&EPOLLIN!=0){
+	if((eventType&EPOLLIN)!=0){
 		while(true){
 			const size_t bufferLength=4096;
 			char buffer[bufferLength];
@@ -73,15 +73,18 @@ void TcpSocket::handleEvent(uint32_t eventType){
 				break;
 			}
 			onDataHandler(::std::string(buffer,length));
+			if(length==0){
+				break;
+			}
 		}
 	}
-	if(eventType&EPOLLERR!=0){
+	if((eventType&EPOLLERR)!=0){
 		lostConnection();
 	}
-	if(eventType&EPOLLHUP!=0){
+	if((eventType&EPOLLRDHUP)!=0){
 		onDataHandler("");
 	}
-	if(eventType&EPOLLOUT!=0){
+	if((eventType&EPOLLOUT)!=0){
 		while(buffer.length()>0){
 			int length=send(fd,buffer.c_str(),buffer.length(),0);//my buffer should not be too long
 			if(length<0){

@@ -28,6 +28,8 @@ CTestTestfile.cmake
 *.out
 *.app
 
+server
+
 *.ps1
 
 node_modules
