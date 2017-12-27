@@ -12,6 +12,7 @@ class TcpSocket:public EventSource{
 	::std::function<void()> onConnectionLostHandler;
 	::std::string buffer;// size>0 <=> wait for next event
 	bool connectionLost=false;
+	bool incomingEnd=false;
 	void lostConnection();
 protected:
 	void handleEvent(uint32_t eventType)override;

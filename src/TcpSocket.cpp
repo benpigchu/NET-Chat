@@ -72,17 +72,24 @@ void TcpSocket::handleEvent(uint32_t eventType){
 				}
 				break;
 			}
-			onDataHandler(::std::string(buffer,length));
 			if(length==0){
+				if(!incomingEnd){
+					onDataHandler("");
+				}
+				incomingEnd=true;
 				break;
 			}
+			onDataHandler(::std::string(buffer,length));
 		}
 	}
 	if((eventType&EPOLLERR)!=0){
 		lostConnection();
 	}
 	if((eventType&EPOLLRDHUP)!=0){
-		onDataHandler("");
+		if(!incomingEnd){
+			onDataHandler("");
+		}
+		incomingEnd=true;
 	}
 	if((eventType&EPOLLOUT)!=0){
 		while(buffer.length()>0){
