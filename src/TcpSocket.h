@@ -6,7 +6,7 @@
 class TcpServer;
 class TcpSocket:public EventSource{
 	friend class TcpServer;
-	TcpSocket(int fd);
+	TcpSocket(int sofd);
 	::std::function<void(::std::string)> onDataHandler;
 	::std::function<void()> onWritableHandler;
 	::std::function<void()> onConnectionLostHandler;

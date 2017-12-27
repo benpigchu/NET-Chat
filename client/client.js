@@ -1,0 +1,6 @@
+const net=require("net")
+const readline=require("readline")
+let c=net.connect(7647)
+c.setEncoding("utf-8")
+c.pipe(process.stdout)
+process.stdin.pipe(c)

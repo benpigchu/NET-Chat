@@ -8,6 +8,8 @@
 #include <errno.h>
 #include "TcpSocket.h"
 
+#include <iostream>
+
 void TcpSocket::setOnDataHandler(::std::function<void(::std::string)> handler){
 	onDataHandler=handler;
 }
@@ -20,8 +22,8 @@ void TcpSocket::setOnConnectionLostHandler(::std::function<void()> handler){
 	onConnectionLostHandler=handler;
 }
 
-TcpSocket::TcpSocket(int fd){
-	fd=fd;
+TcpSocket::TcpSocket(int sofd){
+	fd=sofd;
 	eventType=EPOLLIN|EPOLLOUT|EPOLLRDHUP|EPOLLET;
 }
 
@@ -33,7 +35,7 @@ bool TcpSocket::attemptWrite(::std::string content){
 		if(length<content.length()){
 			if(length<0){
 				if((errno!=EAGAIN)&&(errno!=EWOULDBLOCK)){
-					throw new ::std::runtime_error(strerror(errno));
+					throw ::std::runtime_error(strerror(errno));
 				}
 			}
 			int nextPos=length<0?0:length;
@@ -65,7 +67,7 @@ void TcpSocket::handleEvent(uint32_t eventType){
 					if(errno==ECONNREFUSED){
 						lostConnection();
 					}else{
-						throw new ::std::runtime_error(strerror(errno));
+						throw ::std::runtime_error(strerror(errno));
 					}
 				}
 				break;
@@ -78,5 +80,25 @@ void TcpSocket::handleEvent(uint32_t eventType){
 	}
 	if(eventType&EPOLLHUP!=0){
 		onDataHandler("");
+	}
+	if(eventType&EPOLLOUT!=0){
+		while(buffer.length()>0){
+			int length=send(fd,buffer.c_str(),buffer.length(),0);//my buffer should not be too long
+			if(length<0){
+				if((errno!=EAGAIN)&&(errno!=EWOULDBLOCK)){
+					if(errno==ECONNREFUSED){
+						lostConnection();
+					}else{
+						throw ::std::runtime_error(strerror(errno));
+					}
+				}
+				break;
+			}
+			int nextPos=length<0?0:length;
+			buffer=buffer.substr(nextPos);
+		}
+		if(buffer.length()==0){
+			onWritableHandler();
+		}
 	}
 }

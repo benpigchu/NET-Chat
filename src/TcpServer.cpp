@@ -11,23 +11,25 @@
 #include "TcpServer.h"
 #include "TcpSocket.h"
 
-void TcpServer::setOnConnectHandler(::std::function<void(::std::unique_ptr<TcpSocket>)> handler){
+#include <iostream>
+
+void TcpServer::setOnConnectHandler(::std::function<void(TcpSocket*)> handler){
 	onConnectHandler=handler;
 }
 
 TcpServer::TcpServer(::std::string address,short port){
 	fd=socket(AF_INET,SOCK_STREAM,0);
 	if(fd<0){
-		throw new ::std::runtime_error(strerror(errno));
+		throw ::std::runtime_error(strerror(errno));
 	}
 	addr.sin_family=AF_INET;
 	addr.sin_addr.s_addr=inet_addr(address.c_str());
 	addr.sin_port=htons(port);
 	if(bind(fd,(sockaddr*)(&addr),sizeof(sockaddr_in))<0){
-		throw new ::std::runtime_error(strerror(errno));
+		throw ::std::runtime_error(strerror(errno));
 	}
 	if(listen(fd,64)<0){
-		throw new ::std::runtime_error(strerror(errno));
+		throw ::std::runtime_error(strerror(errno));
 	}
 	eventType=EPOLLIN;
 }
@@ -38,7 +40,7 @@ void TcpServer::handleEvent(uint32_t eventType){
 	socklen_t sin_len = sizeof(sockaddr_in);
 	int newSocketFd=accept4(fd,(sockaddr*)(&addr),&sin_len,SOCK_NONBLOCK);
 	if(newSocketFd<0){
-		throw new ::std::runtime_error(strerror(errno));
+		throw ::std::runtime_error(strerror(errno));
 	}
-	onConnectHandler(::std::unique_ptr<TcpSocket>(new TcpSocket(newSocketFd)));
+	onConnectHandler(new TcpSocket(newSocketFd));
 }

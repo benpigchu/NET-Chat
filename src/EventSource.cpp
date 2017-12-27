@@ -18,7 +18,7 @@ EventSource::~EventSource(){
 	}
 	if(fd>=0){
 		if(close(fd)<0){
-			throw new ::std::runtime_error(strerror(errno));
+			throw ::std::runtime_error(strerror(errno));
 		}
 	}
 }
