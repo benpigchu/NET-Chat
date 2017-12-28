@@ -21,6 +21,7 @@ socket.on("drain",()=>{
 	}
 })
 let loggedin=false
+let chatting=false
 socket.on("data",(buf)=>{
 	inBuffer=Buffer.concat([inBuffer,buf])
 	let expectedLength=inBuffer.readInt16BE(0)
@@ -98,6 +99,17 @@ socket.on("data",(buf)=>{
 					}
 					console.log(nBuf.toString("utf-8",0,length))
 				}
+			}else if(packet[0]===5){// chat/exit return
+				if(packet.length>=2){
+					if(packet[1]===0){
+						console.log(chatting?"Exited.":"Start Chatting.")
+						chatting=!chatting
+					}else if(packet[1]===1){
+						console.log("Username do not exist.")
+					}else if(packet[1]===2){
+						console.log("Cannot chat with yourself.")
+					}
+				}
 			}
 		}
 	}
@@ -173,6 +185,40 @@ cmd.on("line",(line)=>{
 				}
 				let data=Buffer.alloc(1)
 				data[0]=4
+				writePacket(data)
+			}
+		}else if(command[0]==="chat"){
+			if(command.length!==2){
+				console.log("chat <username>")
+			}else{
+				if(!loggedin){
+					console.log("Please log in")
+				}
+				if(chatting){
+					console.log("Please exit first")
+				}
+				let data=Buffer.alloc(17)
+				data[0]=5
+				let uBuf=Buffer.from(command[1])
+				if(uBuf.length>16){
+					console.log("username too long")
+					return
+				}
+				uBuf.copy(data,1)
+				writePacket(data)
+			}
+		}else if(command[0]==="exit"){
+			if(command.length!==1){
+				console.log("exit")
+			}else{
+				if(!loggedin){
+					console.log("Please log in")
+				}
+				if(!chatting){
+					console.log("You has exit")
+				}
+				let data=Buffer.alloc(17)
+				data[0]=5
 				writePacket(data)
 			}
 		}else{

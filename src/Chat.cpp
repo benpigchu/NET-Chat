@@ -155,6 +155,35 @@ void chat(){
 								data+=name;
 							}
 							sendPacket(data);
+						}else if(packet[0]==5){//chat/exit
+							if(socketSessions[socket].userId==0){
+								sendPacket("\xff");
+								return;
+							}
+							if(packet.length()>=17){
+								::std::string uRaw=packet.substr(1,17)+::std::string("\0",1);
+								::std::string username=::std::string(uRaw.c_str());
+								if(username==""){
+									socketSessions[socket].chattingUserId=0;
+									sendPacket(::std::string("\x05\0",2));
+									return;
+								}
+								if(username==users[socketSessions[socket].userId-1].name){
+									sendPacket(::std::string("\x05\x02",2));
+									return;
+								}
+								int i=0;
+								for(;i<users.size();i++){
+									if(users[i].name==username){
+										socketSessions[socket].chattingUserId=i+1;
+										sendPacket(::std::string("\x05\0",2));
+										break;
+									}
+								}
+								if(i==users.size()){
+									sendPacket(::std::string("\05\x01",2));
+								}
+							}
 						}
 					}
 				}else{
