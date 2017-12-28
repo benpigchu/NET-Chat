@@ -87,6 +87,14 @@ void chat(){
 									sendPacket(::std::string("\0\x01",2));
 								}
 							}
+						}else if(packet[0]==1){//search
+							::std::string data="\x01";
+							for(UserData user:users){
+								::std::string name=user.name;
+								name.resize(16,'\0');
+								data+=name;
+							}
+							sendPacket(data);
 						}
 					}
 				}else{

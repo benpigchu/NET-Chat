@@ -28,7 +28,7 @@ socket.on("data",(buf)=>{
 		let packet=inBuffer.slice(2,expectedLength+2)
 		inBuffer=inBuffer.slice(expectedLength+2)
 		if(packet.length>0){
-			if(packet[0]===0){
+			if(packet[0]===0){// login return
 				if(packet.length>=2){
 					if(packet[1]===0){
 						loggedin=true
@@ -40,6 +40,16 @@ socket.on("data",(buf)=>{
 					}else if(packet[1]===3){
 						console.log("Please log out from another client before retry.")
 					}
+				}
+			}else if(packet[0]===1){// search return
+				let count=Math.floor((packet.length-1)/16)
+				for(let i=0;i<count;i++){
+					let nBuf=packet.slice(i*16+1,i*16+17)
+					let length=nBuf.indexOf(0)
+					if(length<0){
+						length=16
+					}
+					console.log(nBuf.toString("utf-8",0,length))
 				}
 			}
 		}
@@ -66,6 +76,14 @@ cmd.on("line",(line)=>{
 				data[0]=0
 				uBuf.copy(data,1)
 				pBuf.copy(data,17)
+				writePacket(data)
+			}
+		}else if(command[0]==="search"){
+			if(command.length!==1){
+				console.log("search")
+			}else{
+				let data=Buffer.alloc(1)
+				data[0]=1
 				writePacket(data)
 			}
 		}else{
