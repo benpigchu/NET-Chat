@@ -31,22 +31,31 @@ void chat(){
 	::std::vector<UserData> users={{"benpigchu","bpctest"},{"bpc2","bpctest2"},{"neko","nyanyan"},{"nyanko","nekoneko"}};//userId=index+1
 	::std::unordered_map<TcpSocket*,Session> socketSessions;
 	::std::vector<::std::unordered_set<int>> friendList(users.size());
+	::std::vector<::std::deque<::std::string>> messageCache(users.size());
 	EventLoop loop;
 	::std::unique_ptr<TcpServer> server=::std::make_unique<TcpServer>(::std::string("0.0.0.0"),7647);
-	server->setOnConnectHandler([&socketSessions,&loop,&users,&friendList](TcpSocket* socket){
+	server->setOnConnectHandler([&socketSessions,&loop,&users,&friendList,&messageCache](TcpSocket* socket){
 		socketSessions[socket];
-		auto sendPacket=[&socketSessions,socket](::std::string data){
+		auto sendPacket=[&socketSessions](TcpSocket* socket,::std::string data){
 			uint16_t l=data.length();
 			uint16_t lt=htons(l);
 			::std::string packet=::std::string((char*)(&lt),2)+data;
-			::std::cerr<<(uint16_t)(packet[0])<<" "<<(uint16_t)(packet[1])<<"\n";
 			if(socketSessions[socket].writable){
 				socketSessions[socket].writable=socket->attemptWrite(packet);
 			}else{
 				socketSessions[socket].outputBuffer.push_back(packet);
 			}
 		};
-		socket->setOnDataHandler([&socketSessions,&loop,socket,&sendPacket,&users,&friendList](::std::string data){
+		auto transmitPackage=[&socketSessions,&sendPacket,&users,&messageCache](int userId,::std::string data){
+			for(auto pair:socketSessions){
+				if(pair.second.userId==userId+1){
+					sendPacket(pair.first,data);
+					return;
+				}
+			}
+			messageCache[userId].push_back(data);
+		};
+		socket->setOnDataHandler([&socketSessions,&loop,socket,&sendPacket,&users,&friendList,&messageCache](::std::string data){
 			if(data.length()==0){
 				socketSessions.erase(socket);
 				loop.deleteLater(socket);
@@ -66,32 +75,35 @@ void chat(){
 								::std::string pRaw=packet.substr(17,33)+::std::string("\0",1);
 								::std::string username=::std::string(uRaw.c_str());
 								::std::string password=::std::string(pRaw.c_str());
-								::std::cerr<<"login "<<username<<" "<<password<<"\n";
 								int i=0;
 								for(;i<users.size();i++){
 									if(users[i].name==username){
 										if(users[i].password==password){
 											for(auto pair:socketSessions){
 												if(pair.second.userId==i+1){
-													sendPacket(::std::string("\0\3",2));
+													sendPacket(socket,::std::string("\0\3",2));
 													goto error;
 												}
 											}
 											socketSessions[socket].userId=i+1;
-											sendPacket(::std::string("\0\0",2));
+											sendPacket(socket,::std::string("\0\0",2));
+											while(!(messageCache[i].empty())){
+												sendPacket(socket,messageCache[i].front());
+												messageCache[i].pop_front();
+											}
 										}else{
-											sendPacket(::std::string("\0\x02",2));
+											sendPacket(socket,::std::string("\0\x02",2));
 										}
 										error:break;
 									}
 								}
 								if(i==users.size()){
-									sendPacket(::std::string("\0\x01",2));
+									sendPacket(socket,::std::string("\0\x01",2));
 								}
 							}
 						}else if(packet[0]==1){//search
 							if(socketSessions[socket].userId==0){
-								sendPacket("\xff");
+								sendPacket(socket,"\xff");
 								return;
 							}
 							::std::string data="\x01";
@@ -100,10 +112,10 @@ void chat(){
 								name.resize(16,'\0');
 								data+=name;
 							}
-							sendPacket(data);
+							sendPacket(socket,data);
 						}else if(packet[0]==2){//profile
 							if(socketSessions[socket].userId==0){
-								sendPacket("\xff");
+								sendPacket(socket,"\xff");
 								return;
 							}
 							::std::string data="\x02";
@@ -113,17 +125,17 @@ void chat(){
 							data+=name;
 							chattingName.resize(16,'\0');
 							data+=chattingName;
-							sendPacket(data);
+							sendPacket(socket,data);
 						}else if(packet[0]==3){//add
 							if(socketSessions[socket].userId==0){
-								sendPacket("\xff");
+								sendPacket(socket,"\xff");
 								return;
 							}
 							if(packet.length()>=17){
 								::std::string uRaw=packet.substr(1,17)+::std::string("\0",1);
 								::std::string username=::std::string(uRaw.c_str());
 								if(username==users[socketSessions[socket].userId-1].name){
-									sendPacket(::std::string("\x03\x02",2));
+									sendPacket(socket,::std::string("\x03\x02",2));
 									return;
 								}
 								int i=0;
@@ -131,21 +143,21 @@ void chat(){
 									if(users[i].name==username){
 										auto& friends=friendList[socketSessions[socket].userId-1];
 										if(friends.find(i)!=friends.end()){
-											sendPacket(::std::string("\x03\x03",2));
+											sendPacket(socket,::std::string("\x03\x03",2));
 										}else{
 											friends.insert(i);
-											sendPacket(::std::string("\x03\0",2));
+											sendPacket(socket,::std::string("\x03\0",2));
 										}
 										break;
 									}
 								}
 								if(i==users.size()){
-									sendPacket(::std::string("\03\x01",2));
+									sendPacket(socket,::std::string("\03\x01",2));
 								}
 							}
 						}else if(packet[0]==4){//ls
 							if(socketSessions[socket].userId==0){
-								sendPacket("\xff");
+								sendPacket(socket,"\xff");
 								return;
 							}
 							::std::string data="\x04";
@@ -154,10 +166,10 @@ void chat(){
 								name.resize(16,'\0');
 								data+=name;
 							}
-							sendPacket(data);
+							sendPacket(socket,data);
 						}else if(packet[0]==5){//chat/exit
 							if(socketSessions[socket].userId==0){
-								sendPacket("\xff");
+								sendPacket(socket,"\xff");
 								return;
 							}
 							if(packet.length()>=17){
@@ -165,23 +177,23 @@ void chat(){
 								::std::string username=::std::string(uRaw.c_str());
 								if(username==""){
 									socketSessions[socket].chattingUserId=0;
-									sendPacket(::std::string("\x05\0",2));
+									sendPacket(socket,::std::string("\x05\0",2));
 									return;
 								}
 								if(username==users[socketSessions[socket].userId-1].name){
-									sendPacket(::std::string("\x05\x02",2));
+									sendPacket(socket,::std::string("\x05\x02",2));
 									return;
 								}
 								int i=0;
 								for(;i<users.size();i++){
 									if(users[i].name==username){
 										socketSessions[socket].chattingUserId=i+1;
-										sendPacket(::std::string("\x05\0",2));
+										sendPacket(socket,::std::string("\x05\0",2));
 										break;
 									}
 								}
 								if(i==users.size()){
-									sendPacket(::std::string("\05\x01",2));
+									sendPacket(socket,::std::string("\05\x01",2));
 								}
 							}
 						}
