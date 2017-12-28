@@ -35,6 +35,7 @@ void chat(){
 	EventLoop loop;
 	::std::unique_ptr<TcpServer> server=::std::make_unique<TcpServer>(::std::string("0.0.0.0"),7647);
 	auto sendPacket=[&socketSessions](TcpSocket* socket,::std::string data){
+		::std::cerr<<socket<<"---"<<data.length()<<"-->\n";
 		uint32_t l=data.length();
 		uint32_t lt=htonl(l);
 		::std::string packet=::std::string((char*)(&lt),4)+data;
@@ -66,13 +67,14 @@ void chat(){
 				uint32_t l=*(uint32_t*)(socketSessions[socket].inputBuffer.c_str());
 				int length=ntohl(l);
 				if(socketSessions[socket].inputBuffer.length()>=4+length){
-					::std::string packet=socketSessions[socket].inputBuffer.substr(4,4+length);
+					::std::string packet=socketSessions[socket].inputBuffer.substr(4,length);
 					socketSessions[socket].inputBuffer=socketSessions[socket].inputBuffer.substr(4+length);
+		::std::cerr<<socket<<"---"<<packet.length()<<"<--\n";
 					if(packet.length()>0){
 						if(packet[0]==0){//login
 							if(packet.length()>=33){
-								::std::string uRaw=packet.substr(1,17)+::std::string("\0",1);
-								::std::string pRaw=packet.substr(17,33)+::std::string("\0",1);
+								::std::string uRaw=packet.substr(1,16)+::std::string("\0",1);
+								::std::string pRaw=packet.substr(17,16)+::std::string("\0",1);
 								::std::string username=::std::string(uRaw.c_str());
 								::std::string password=::std::string(pRaw.c_str());
 								int i=0;
@@ -88,7 +90,6 @@ void chat(){
 											socketSessions[socket].userId=i+1;
 											sendPacket(socket,::std::string("\0\0",2));
 											while(!(messageCache[i].empty())){
-												::std::cerr<<messageCache[i].size()<<"\n";
 												sendPacket(socket,messageCache[i].front());
 												messageCache[i].pop_front();
 											}
@@ -133,7 +134,7 @@ void chat(){
 								return;
 							}
 							if(packet.length()>=17){
-								::std::string uRaw=packet.substr(1,17)+::std::string("\0",1);
+								::std::string uRaw=packet.substr(1,16)+::std::string("\0",1);
 								::std::string username=::std::string(uRaw.c_str());
 								if(username==users[socketSessions[socket].userId-1].name){
 									sendPacket(socket,::std::string("\x03\x02",2));
@@ -174,7 +175,7 @@ void chat(){
 								return;
 							}
 							if(packet.length()>=17){
-								::std::string uRaw=packet.substr(1,17)+::std::string("\0",1);
+								::std::string uRaw=packet.substr(1,16)+::std::string("\0",1);
 								::std::string username=::std::string(uRaw.c_str());
 								if(username==""){
 									socketSessions[socket].chattingUserId=0;
@@ -209,7 +210,6 @@ void chat(){
 							name.resize(16,'\0');
 							transmitPackage(socketSessions[socket].chattingUserId-1,"\x06"+name+packet.substr(1));
 						}else if(packet[0]==7){//smsg
-						::std::cerr<<packet.length()<<"\n";
 							if(socketSessions[socket].userId==0){
 								sendPacket(socket,"\xff");
 								return;
