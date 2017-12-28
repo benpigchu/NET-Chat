@@ -6,8 +6,8 @@ const outBuffer=[]
 let writable=true
 const socket=net.connect(7647)
 const writePacket=(buf)=>{
-	const head=Buffer.alloc(2)
-	head.writeInt16BE(buf.length,0)
+	const head=Buffer.alloc(4)
+	head.writeInt32BE(buf.length,0)
 	const packet=Buffer.concat([head,buf])
 	if(writable){
 		writable=socket.write(packet)
@@ -24,10 +24,10 @@ let loggedin=false
 let chatting=false
 socket.on("data",(buf)=>{
 	inBuffer=Buffer.concat([inBuffer,buf])
-	const expectedLength=inBuffer.readInt16BE(0)
-	if(expectedLength+2>=inBuffer.length){
-		const packet=inBuffer.slice(2,expectedLength+2)
-		inBuffer=inBuffer.slice(expectedLength+2)
+	const expectedLength=inBuffer.readInt32BE(0)
+	if(expectedLength+4>=inBuffer.length){
+		const packet=inBuffer.slice(4,expectedLength+4)
+		inBuffer=inBuffer.slice(expectedLength+4)
 		if(packet.length>0){
 			if(packet[0]===0){// login return
 				if(packet.length>=2){
@@ -291,7 +291,6 @@ cmd.on("line",(line)=>{
 					console.log("Please enter a chat")
 					return
 				}
-				console.log(require("path").basename(command[1]))
 				let name=Buffer.from(require("path").basename(command[1]))
 				let content
 				try{

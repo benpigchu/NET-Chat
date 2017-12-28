@@ -28,27 +28,20 @@ struct Session{
 };
 
 void chat(){
-	::std::vector<UserData> users={{"benpigchu","bpctest"},{"bpc2","bpctest2"},{"neko","nyanyan"},{"nyanko","nekoneko"}};//userId=index+1
+	::std::vector<UserData> users={{"a","a"},{"b","b"},{"benpigchu","bpctest"},{"bpc2","bpctest2"},{"neko","nyanyan"},{"nyanko","nekoneko"}};//userId=index+1
 	::std::unordered_map<TcpSocket*,Session> socketSessions;
 	::std::vector<::std::unordered_set<int>> friendList(users.size());
 	::std::vector<::std::deque<::std::string>> messageCache(users.size());
 	EventLoop loop;
 	::std::unique_ptr<TcpServer> server=::std::make_unique<TcpServer>(::std::string("0.0.0.0"),7647);
 	auto sendPacket=[&socketSessions](TcpSocket* socket,::std::string data){
-		uint16_t l=data.length();
-		uint16_t lt=htons(l);
-		::std::string packet=::std::string((char*)(&lt),2)+data;
-	::std::cerr<<"--------------1\n";
-	::std::cerr<<(socket)<<"--------------1\n";
-	::std::cerr<<(&socketSessions)<<"--------------1\n";
+		uint32_t l=data.length();
+		uint32_t lt=htonl(l);
+		::std::string packet=::std::string((char*)(&lt),4)+data;
 		if(socketSessions[socket].writable){
-	::std::cerr<<"--------------l1\n";
 			socketSessions[socket].writable=socket->attemptWrite(packet);
-	::std::cerr<<"--------------l2\n";
 		}else{
-	::std::cerr<<"--------------r1\n";
 			socketSessions[socket].outputBuffer.push_back(packet);
-	::std::cerr<<"--------------r2\n";
 		}
 	};
 	auto transmitPackage=[&socketSessions,&sendPacket,&users,&messageCache](int userId,::std::string data){
@@ -64,21 +57,17 @@ void chat(){
 		socketSessions[socket];
 		socket->setOnDataHandler([&socketSessions,&loop,socket,&sendPacket,&users,&friendList,&messageCache,&transmitPackage](::std::string data){
 			if(data.length()==0){
-		::std::cerr<<(&socketSessions)<<"--------------xx\n";
 				socketSessions.erase(socket);
 				loop.deleteLater(socket);
-		::std::cerr<<(&socketSessions)<<"--------------xx\n";
-				::std::cerr<<"--------------xx\n";
 				return;
 			}
-				::std::cerr<<"--------------xx?\n";
 			socketSessions[socket].inputBuffer+=data;
 			while(socketSessions[socket].inputBuffer.length()>2){
-				uint16_t l=*(uint16_t*)(socketSessions[socket].inputBuffer.c_str());
-				int length=ntohs(l);
-				if(socketSessions[socket].inputBuffer.length()>=2+length){
-					::std::string packet=socketSessions[socket].inputBuffer.substr(2,2+length);
-					socketSessions[socket].inputBuffer=socketSessions[socket].inputBuffer.substr(2+length);
+				uint32_t l=*(uint32_t*)(socketSessions[socket].inputBuffer.c_str());
+				int length=ntohl(l);
+				if(socketSessions[socket].inputBuffer.length()>=4+length){
+					::std::string packet=socketSessions[socket].inputBuffer.substr(4,4+length);
+					socketSessions[socket].inputBuffer=socketSessions[socket].inputBuffer.substr(4+length);
 					if(packet.length()>0){
 						if(packet[0]==0){//login
 							if(packet.length()>=33){
