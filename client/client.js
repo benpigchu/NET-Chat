@@ -43,6 +43,53 @@ socket.on("data",(buf)=>{
 				}
 			}else if(packet[0]===1){// search return
 				let count=Math.floor((packet.length-1)/16)
+				console.log(`${count} user(s):`)
+				for(let i=0;i<count;i++){
+					let nBuf=packet.slice(i*16+1,i*16+17)
+					let length=nBuf.indexOf(0)
+					if(length<0){
+						length=16
+					}
+					console.log(nBuf.toString("utf-8",0,length))
+				}
+			}else if(packet[0]===2){// profile return
+				if(packet.length>=33){
+					let nBuf=packet.slice(1,17)
+					let nlength=nBuf.indexOf(0)
+					if(nlength<0){
+						nlength=16
+					}
+					let name=nBuf.toString("utf-8",0,nlength)
+					if(name!==""){
+						console.log(`You are ${name}.`)
+					}
+					let pnBuf=packet.slice(17,33)
+					let pnlength=pnBuf.indexOf(0)
+					if(pnlength<0){
+						pnlength=16
+					}
+					let peername=pnBuf.toString("utf-8",0,pnlength)
+					if(peername!==""){
+						console.log(`You are chatting with ${peername}.`)
+					}else{
+						console.log(`You are not chatting with anyone.`)
+					}
+				}
+			}else if(packet[0]===3){// add return
+				if(packet.length>=2){
+					if(packet[1]===0){
+						console.log("Friend added.")
+					}else if(packet[1]===1){
+						console.log("Username do not exist.")
+					}else if(packet[1]===2){
+						console.log("Cannot add yourself as friend.")
+					}else if(packet[1]===3){
+						console.log("He/She is already you friend.")
+					}
+				}
+			}else if(packet[0]===4){// ls return
+				let count=Math.floor((packet.length-1)/16)
+				console.log(`${count} friend(s):`)
 				for(let i=0;i<count;i++){
 					let nBuf=packet.slice(i*16+1,i*16+17)
 					let length=nBuf.indexOf(0)
@@ -82,8 +129,50 @@ cmd.on("line",(line)=>{
 			if(command.length!==1){
 				console.log("search")
 			}else{
+				if(!loggedin){
+					console.log("Please log in")
+				}
 				let data=Buffer.alloc(1)
 				data[0]=1
+				writePacket(data)
+			}
+		}else if(command[0]==="profile"){
+			if(command.length!==1){
+				console.log("profile")
+			}else{
+				if(!loggedin){
+					console.log("Please log in")
+				}
+				let data=Buffer.alloc(1)
+				data[0]=2
+				writePacket(data)
+			}
+		}else if(command[0]==="add"){
+			if(command.length!==2){
+				console.log("add <username>")
+			}else{
+				if(!loggedin){
+					console.log("Please log in")
+				}
+				let data=Buffer.alloc(17)
+				data[0]=3
+				let uBuf=Buffer.from(command[1])
+				if(uBuf.length>16){
+					console.log("username too long")
+					return
+				}
+				uBuf.copy(data,1)
+				writePacket(data)
+			}
+		}else if(command[0]==="ls"){
+			if(command.length!==1){
+				console.log("ls")
+			}else{
+				if(!loggedin){
+					console.log("Please log in")
+				}
+				let data=Buffer.alloc(1)
+				data[0]=4
 				writePacket(data)
 			}
 		}else{
