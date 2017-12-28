@@ -1,6 +1,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <signal.h>
 #include "EventLoop.h"
 #include "EventSource.h"
 #include "TcpServer.h"
@@ -32,6 +33,7 @@ void echoTest(){
 
 int main(int argc,char** argv){
 	::std::cout<<"building...\n";
+	signal(SIGPIPE,SIG_IGN);
 	chat();
 	return 0;
 }

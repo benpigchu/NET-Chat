@@ -83,9 +83,11 @@ void TcpSocket::handleEvent(uint32_t eventType){
 		}
 	}
 	if((eventType&EPOLLERR)!=0){
+	::std::cerr<<"--------------*1\n";
 		lostConnection();
 	}
 	if((eventType&EPOLLRDHUP)!=0){
+	::std::cerr<<"--------------+1\n";
 		if(!incomingEnd){
 			onDataHandler("");
 		}
