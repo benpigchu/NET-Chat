@@ -32,7 +32,7 @@ void echoTest(){
 
 
 int main(int argc,char** argv){
-	::std::cout<<"building...\n";
+	// ::std::cout<<"building...\n";
 	signal(SIGPIPE,SIG_IGN);
 	chat();
 	return 0;

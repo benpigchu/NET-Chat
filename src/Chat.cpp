@@ -35,7 +35,7 @@ void chat(){
 	EventLoop loop;
 	::std::unique_ptr<TcpServer> server=::std::make_unique<TcpServer>(::std::string("0.0.0.0"),7647);
 	auto sendPacket=[&socketSessions](TcpSocket* socket,::std::string data){
-		::std::cerr<<socket<<"---"<<data.length()<<"-->\n";
+		// ::std::cerr<<socket<<"---"<<data.length()<<"-->\n";
 		uint32_t l=data.length();
 		uint32_t lt=htonl(l);
 		::std::string packet=::std::string((char*)(&lt),4)+data;
@@ -69,7 +69,7 @@ void chat(){
 				if(socketSessions[socket].inputBuffer.length()>=4+length){
 					::std::string packet=socketSessions[socket].inputBuffer.substr(4,length);
 					socketSessions[socket].inputBuffer=socketSessions[socket].inputBuffer.substr(4+length);
-		::std::cerr<<socket<<"---"<<packet.length()<<"<--\n";
+		// ::std::cerr<<socket<<"---"<<packet.length()<<"<--\n";
 					if(packet.length()>0){
 						if(packet[0]==0){//login
 							if(packet.length()>=33){
@@ -89,10 +89,15 @@ void chat(){
 											}
 											socketSessions[socket].userId=i+1;
 											sendPacket(socket,::std::string("\0\0",2));
+											// ::std::cerr<<messageCache[i].size()<<"\n";
 											while(!(messageCache[i].empty())){
 												sendPacket(socket,messageCache[i].front());
 												messageCache[i].pop_front();
+												if(messageCache[i].size()%10==0){
+											// ::std::cerr<<messageCache[i].size()<<"\n";
+												}
 											}
+											// ::std::cerr<<messageCache[i].size()<<"\n";
 										}else{
 											sendPacket(socket,::std::string("\0\x02",2));
 										}

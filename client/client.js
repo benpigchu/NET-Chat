@@ -6,7 +6,7 @@ const outBuffer=[]
 let writable=true
 const socket=net.connect(7647)
 const writePacket=(buf)=>{
-	console.log(`<--${buf.length}`)
+	// console.log(`<--${buf.length}`)
 	const head=Buffer.alloc(4)
 	head.writeInt32BE(buf.length,0)
 	const packet=Buffer.concat([head,buf])
@@ -18,14 +18,17 @@ const writePacket=(buf)=>{
 	}
 }
 // let packnum=0
+// let len=0
 const attemptSendFile=()=>{
+	// let len2=len
 	if(outFd!==null){
 		while(writable){
 			let buf=Buffer.alloc(4096)
 			let length=require("fs").readSync(outFd,buf,0,4096)
 			// packnum++
-			// if(packnum%10===0){
-			// 	console.log(`--${packnum}--`)
+			// len+=length
+			// if(packnum%1000===0){
+			// 	console.log(`--${len}--`)
 			// }
 			if(length===0){
 				const data=Buffer.alloc(2)
@@ -35,6 +38,9 @@ const attemptSendFile=()=>{
 				require("fs").closeSync(outFd)
 				outFd=null
 				console.log("File transport finish")
+				// console.log(`--${len}--`)
+				// packnum=0
+				// len=0
 				break
 			}else{
 				const data=Buffer.alloc(2)
@@ -44,12 +50,17 @@ const attemptSendFile=()=>{
 			}
 		}
 	}
+	// console.log(len2-len)
 }
 socket.on("drain",()=>{
+	// console.log("-->drain")
+	writable=true
 	while(outBuffer.length>0&&writable){
 		writable=socket.write(outBuffer.shift())
 	}
+	// console.log("-->file-after-drain")
 	attemptSendFile()
+	// console.log("-->file-after-drain-end")
 })
 let loggedin=false
 let chatting=false
@@ -60,7 +71,7 @@ socket.on("data",(buf)=>{
 	while(inBuffer.length>=4){
 		const expectedLength=inBuffer.readInt32BE(0)
 		if(expectedLength+4<=inBuffer.length){
-			console.log(`-->${expectedLength}`)
+			// console.log(`-->${expectedLength}`)
 			const packet=inBuffer.slice(4,expectedLength+4)
 			inBuffer=inBuffer.slice(expectedLength+4)
 			if(packet.length>0){
@@ -171,7 +182,7 @@ socket.on("data",(buf)=>{
 								return
 							}
 							let filename=message.toString("utf-8",1)
-							console.log(expectedLength,message.slice(1))
+							// console.log(expectedLength,message.slice(1))
 							console.log(`${name} send you a file "${filename}"`)
 							try{
 								inFd=require("fs").openSync(filename,"w")
@@ -179,13 +190,17 @@ socket.on("data",(buf)=>{
 								console.log(`fs error:${err}`)
 							}
 						}else if(message[0]===1){
-							let buffer=message.slice(1)
-							let length=require("fs").writeSync(inFd,buffer)
-							console.log(`#${length}#${buffer.length}#`)
+							if(inFd!==null){
+								let buffer=message.slice(1)
+								let length=require("fs").writeSync(inFd,buffer)
+							}
+							// console.log(`#${length}#${buffer.length}#`)
 						}else if(message[0]===2){
-							require("fs").closeSync(inFd)
-							inFd=null
-							console.log("File saved")
+							if(inFd!==null){
+								require("fs").closeSync(inFd)
+								inFd=null
+								console.log("File saved")
+							}
 						}
 					}
 				}
